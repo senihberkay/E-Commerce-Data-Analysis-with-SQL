@@ -1,1 +1,3 @@
 # E-Commerce-Data-Analysis-with-SQL
+
+An e-commerce organization requests some analysis of its sales and delivery processes. Thus, the organization hopes to be able to more easily predict future opportunities and threats. Therefore, in this project, I aimed to get some results for the company with the data. To get the proper analysis, I first cleaned up some columns and their organized data types then used my own approach and wrote my own SQL query. Besides, I categorized the customers according to the frequency of visits in order to have information about customer segmentation. Finally, find the monthly customer retention since the start of the business to find the monthly retention rate.
