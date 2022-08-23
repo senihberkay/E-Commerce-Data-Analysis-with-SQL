@@ -1,5 +1,5 @@
 
--- Using the columns of “market_fact”, “cust_dimen”, “orders_dimen”, “prod_dimen”, “shipping_dimen”, created a new table named as “combined_table”.
+-- Using the columns of â€œmarket_factâ€, â€œcust_dimenâ€, â€œorders_dimenâ€, â€œprod_dimenâ€, â€œshipping_dimenâ€, created a new table named as â€œcombined_tableâ€.
 
 create view [combined_view] 
 as
@@ -140,3 +140,77 @@ create view visit_count as
 	count(*) over(partition by Cust_id order by convert(int, SUBSTRING(Cust_id, 6, len(Cust_id)))) count_log
 	from combined_table
 );
+
+
+
+-- For each visit of customers, created the next month of the visit as a separate column.
+
+create  view next_visit_log as
+(
+	select *, lead(current_month, 1) over(partition by  Customer_ID  order by current_month) next_month_visit
+	from
+	(
+		select *,  DENSE_RANK() over(order by [Year], [Month]) current_month
+		from visit_log
+		) t
+);
+
+
+
+-- Calculated the monthly time gap between two consecutive visits by each customer.
+
+create view visit_gap as
+(
+	select *, next_month_visit - current_month cust_visit_gap
+	from next_visit_log
+);
+
+-- Categorized customers using average time gaps. 
+
+with cte as
+(
+	select Customer_ID, avg(cust_visit_gap) avg_visit_gap
+	from visit_gap
+	group by  Customer_ID
+)
+
+select Customer_ID,
+		case
+			when avg_visit_gap >= 1 then 'Regular'
+			when avg_visit_gap is NULL then 'Churn'
+		end as visit_freq
+from cte
+
+-- Month-Wise Retention Rate
+-- Finded month-by-month customer retention rate since the start of the business.
+
+select * from visit_gap
+
+create view current_count
+as
+(
+	select *, 
+		count(Customer_ID) over(partition by current_month) current_count_customer
+	from visit_gap
+	where current_month > 1
+);
+
+create view next_count
+as
+(
+	select *,
+		count(Customer_ID) over(partition by next_month_visit) next_count_customer
+	from visit_gap
+	where cust_visit_gap = 1
+);
+
+
+with t1 as(
+	select A.Customer_ID, A.next_month_visit, A.current_count_customer, B.next_count_customer
+	from current_count A, next_count B
+	where A.next_month_visit = B.current_month
+	and A.cust_visit_gap =  1
+)
+select distinct cast(1.0 * next_count_customer/current_count_customer  as numeric (3,2)) as Month_Wise_Retention_Rate
+from t1
+
